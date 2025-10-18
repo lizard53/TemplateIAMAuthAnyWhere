@@ -1,111 +1,91 @@
-# AWS IAM Roles Anywhere - PKI Authentication
+# AWS IAM Roles Anywhere - PKI Authentication Template
 
-A secure implementation of Public Key Infrastructure (PKI) for AWS IAM Roles Anywhere, enabling certificate-based authentication from macOS to AWS accounts without long-term access keys.
+**This is a template repository** that demonstrates how to implement Public Key Infrastructure (PKI) for AWS IAM Roles Anywhere, enabling certificate-based authentication from macOS to AWS accounts without long-term access keys.
 
 ## Overview
 
-This project demonstrates how to authenticate to AWS using X.509 certificates instead of traditional IAM access keys. By leveraging AWS IAM Roles Anywhere, you can obtain temporary AWS credentials using self-signed certificates, providing enhanced security for workloads running outside of AWS.
+This template shows how to authenticate to AWS using X.509 certificates instead of traditional IAM access keys. By leveraging AWS IAM Roles Anywhere, you can obtain temporary AWS credentials using self-signed certificates, providing enhanced security for workloads running outside of AWS.
+
+Use this repository as a reference and starting point for implementing PKI authentication in your own AWS environment.
+
+## What's Included
+
+- **Template OpenSSL Configuration** (`certs/openssl.cnf`) - Pre-configured for X.509 v3 certificates required by AWS IAM Roles Anywhere
+- **Credential Export Script** (`aws-credentials-export.zsh`) - Automated script to fetch and export temporary AWS credentials
+- **Comprehensive Documentation** (`CLAUDE.md`) - Detailed setup guide with examples, architecture diagrams, and troubleshooting
+- **Example Commands** - All commands use placeholder values that you can replace with your own
 
 ## Features
 
 - Self-signed PKI infrastructure for AWS authentication
-- Automated credential generation and export
-- macOS Keychain integration
-- X.509 v3 certificate support
+- Automated credential generation and export script
+- macOS Keychain integration support
+- X.509 v3 certificate configuration
 - Temporary credential management via IAM Roles Anywhere
+- No hardcoded sensitive values - all examples use placeholders
 
 ## Prerequisites
 
 - macOS (Apple Silicon or Intel)
-- OpenSSL
-- AWS CLI
-- [aws_signing_helper](https://docs.aws.amazon.com/rolesanywhere/latest/userguide/credential-helper.html)
-- GitHub CLI (optional, for repository management)
+- OpenSSL (for certificate generation)
+- AWS CLI (for IAM Roles Anywhere setup)
+- [aws_signing_helper](https://docs.aws.amazon.com/rolesanywhere/latest/userguide/credential-helper.html) (download instructions in CLAUDE.md)
+- An AWS account with permissions to create IAM Roles Anywhere resources
 
-## Quick Start
+## Getting Started
 
-### 1. Generate Certificates
+📚 **Follow the complete setup guide in [CLAUDE.md](CLAUDE.md)**
 
-```bash
-# Create certificates directory
-mkdir -p certs
-cd certs
+The CLAUDE.md file provides comprehensive step-by-step instructions including:
 
-# Generate root CA
-openssl genrsa -out root-ca-key.pem 4096
-openssl req -new -x509 -days 3650 -key root-ca-key.pem -out root-ca-cert.pem -config openssl.cnf -extensions v3_ca
+1. **Configure the OpenSSL template** (`certs/openssl.cnf`) with your organization details
+2. **Generate PKI certificates** using the provided OpenSSL commands with examples
+3. **Set up AWS IAM Roles Anywhere** resources (Trust Anchor, Profile, Role)
+4. **Configure the credential export script** (`aws-credentials-export.zsh`) with your paths and ARNs
+5. **Test and verify** your certificate-based authentication
 
-# Generate client certificate
-openssl genrsa -out private-key.pem 2048
-openssl req -new -key private-key.pem -out client-csr.pem -subj "/C=US/ST=Washington/L=Seattle/O=Personal/OU=Personal/CN=MacStudio"
-openssl x509 -req -days 365 -in client-csr.pem -CA root-ca-cert.pem -CAkey root-ca-key.pem -CAcreateserial -out client-cert.pem -extfile openssl.cnf -extensions v3_client
-```
-
-### 2. Configure AWS IAM Roles Anywhere
-
-```bash
-# Create Trust Anchor (upload root CA certificate)
-aws rolesanywhere create-trust-anchor \
-  --name "Personal-Mac-CA" \
-  --source sourceType=CERTIFICATE_BUNDLE,sourceData={x509CertificateData="$(cat root-ca-cert.pem)"}
-
-# Create Profile
-aws rolesanywhere create-profile \
-  --name "Personal-Mac-Profile" \
-  --role-arns "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"
-```
-
-### 3. Obtain Temporary Credentials
-
-```bash
-# Using the automated script
-source ~/aws-credentials-export.zsh
-
-# Or manually with aws_signing_helper
-./aws_signing_helper credential-process \
-  --certificate client-cert.pem \
-  --private-key private-key.pem \
-  --trust-anchor-arn arn:aws:rolesanywhere:REGION:ACCOUNT_ID:trust-anchor/TA_ID \
-  --profile-arn arn:aws:rolesanywhere:REGION:ACCOUNT_ID:profile/PROFILE_ID \
-  --role-arn arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME
-```
+All commands in CLAUDE.md use **placeholder values** with concrete examples showing what real values look like. Simply replace the placeholders with your actual configuration.
 
 ## Project Structure
 
 ```
 .
-├── README.md                 # This file
-├── CLAUDE.md                 # Detailed implementation guide
-├── .gitignore               # Excludes certificates from version control
-├── certs/                   # Certificate storage (not in git)
-│   ├── openssl.cnf         # OpenSSL v3 configuration
-│   ├── root-ca-cert.pem    # Root CA certificate
-│   ├── root-ca-key.pem     # Root CA private key
-│   ├── client-cert.pem     # Client certificate
-│   ├── private-key.pem     # Client private key
-│   └── aws_signing_helper  # AWS credential helper
-└── scripts/                 # Automation scripts (optional)
+├── README.md                     # This file - quick start guide
+├── CLAUDE.md                     # Detailed implementation guide
+├── aws-credentials-export.zsh    # Template credential automation script
+├── .gitignore                    # Excludes certificates from version control
+└── certs/                        # Certificate storage (not in git)
+    ├── openssl.cnf               # OpenSSL v3 configuration template
+    ├── root-ca-cert.pem          # Root CA certificate (generated)
+    ├── root-ca-key.pem           # Root CA private key (generated)
+    ├── client-cert.pem           # Client certificate (generated)
+    ├── private-key.pem           # Client private key (generated)
+    └── aws_signing_helper        # AWS credential helper (download separately)
 ```
 
 ## Security Considerations
 
-- Private keys are excluded from version control via `.gitignore`
-- Root CA private key should be stored securely and kept offline when not in use
-- Client certificates have limited validity (365 days recommended)
-- All certificates must be X.509 v3 with proper extensions
-- Temporary credentials expire automatically
+- **No Hardcoded Secrets**: All examples use placeholder values - replace with your own
+- **Private Keys Protected**: Excluded from version control via `.gitignore`
+- **Root CA Security**: Root CA private key should be stored securely offline when not in use
+- **Certificate Expiration**: Client certificates have limited validity (365 days recommended)
+- **X.509 v3 Required**: AWS IAM Roles Anywhere requires v3 certificates with proper extensions
+- **Automatic Rotation**: Temporary credentials expire automatically (typically 1 hour)
+- **Audit Trail**: All certificate usage is logged in AWS CloudTrail
 
 ## Documentation
 
-For detailed setup instructions, troubleshooting, and architecture diagrams, see [CLAUDE.md](CLAUDE.md).
+📖 **See [CLAUDE.md](CLAUDE.md) for comprehensive documentation**
 
-Key topics covered:
-- Complete certificate generation workflow
-- macOS Keychain integration
-- AWS IAM Roles Anywhere configuration
-- Automated credential export script
-- Common issues and solutions
-- Security best practices
+The detailed guide includes:
+- **Architecture Overview**: Mermaid diagrams showing the complete authentication flow
+- **Step-by-Step Setup**: Detailed instructions with examples for each configuration value
+- **Certificate Generation**: Complete OpenSSL commands with explanations
+- **AWS Configuration**: How to create Trust Anchors, Profiles, and retrieve ARNs
+- **macOS Keychain Integration**: Optional integration for secure certificate storage
+- **Credential Automation**: How to configure and use the included script
+- **Troubleshooting**: Common issues and their solutions
+- **Security Best Practices**: Guidelines for secure PKI management
 
 ## How It Works
 
@@ -124,9 +104,15 @@ Key topics covered:
 - **Audit Trail**: Certificate usage is logged in AWS CloudTrail
 - **Flexible**: Works with any workload outside of AWS
 
+## Getting Help
+
+- Review [CLAUDE.md](CLAUDE.md) for detailed documentation
+- Check the "Common Issues" section in CLAUDE.md for troubleshooting
+- Ensure all placeholder values have been replaced with your actual configuration
+
 ## License
 
-This project is for personal use and demonstration purposes.
+This is a template repository for demonstration and educational purposes. Feel free to use it as a starting point for your own AWS IAM Roles Anywhere implementation.
 
 ## Additional Resources
 
