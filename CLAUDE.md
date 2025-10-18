@@ -552,6 +552,88 @@ openssl x509 -in client-cert.pem -text -noout | grep -A 1 "Version"
 2. Unlock the keychain: `security unlock-keychain -p PASSWORD credential-helper.keychain`
 3. Verify import: `security find-certificate -a -c "YOUR_HOSTNAME" credential-helper.keychain`
 
+## Trusting Certificates in macOS Keychain
+
+> **Note:** This section is specific to macOS. If you imported certificates into your Keychain, you may need to explicitly trust them to avoid security warnings.
+
+After importing certificates into macOS Keychain, you need to set the trust settings to allow applications to use them:
+
+### Option 1: Trust via Keychain Access GUI (Recommended)
+
+1. **Open Keychain Access:**
+   ```bash
+   open /Applications/Utilities/Keychain\ Access.app
+   ```
+
+2. **Locate your certificate:**
+   - Select the `credential-helper` keychain (or `login` if you imported there)
+   - Find your certificate (search for your hostname, e.g., "MyMacBook")
+
+3. **Set trust settings:**
+   - Double-click the certificate
+   - Expand the "Trust" section
+   - Set "When using this certificate" to **"Always Trust"**
+   - Close the window (you'll be prompted for your password)
+
+### Option 2: Trust via Command Line
+
+```bash
+# Get the SHA-1 hash of your certificate
+CERT_HASH=$(security find-certificate -a -c "YOUR_HOSTNAME" -Z credential-helper.keychain | grep "SHA-1" | awk '{print $3}')
+
+# Set trust settings for the certificate
+# This sets the certificate as trusted for all applications
+sudo security add-trusted-cert -d -r trustRoot -k credential-helper.keychain certs/client-cert.pem
+
+# Or trust only for specific applications (aws_signing_helper)
+security set-key-partition-list -S apple-tool:,apple: -s -k ${CREDENTIAL_HELPER_KEYCHAIN_PASSWORD} credential-helper.keychain
+
+# Verify trust settings
+security dump-trust-settings -d
+```
+
+### Option 3: Trust the Root CA Certificate
+
+If you're getting trust warnings, you may need to trust the Root CA certificate:
+
+```bash
+# Import and trust the root CA certificate in the System keychain
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain certs/root-ca-cert.pem
+
+# Verify the root CA is trusted
+security verify-cert -c certs/client-cert.pem
+```
+
+### Troubleshooting Trust Issues
+
+**Error:** "The certificate was not trusted"
+**Solution:**
+1. Ensure the Root CA certificate is trusted in the System keychain
+2. Verify the client certificate chain: `openssl verify -CAfile certs/root-ca-cert.pem certs/client-cert.pem`
+3. Check trust settings: `security dump-trust-settings`
+
+**Error:** "User interaction is not allowed"
+**Solution:**
+```bash
+# Allow applications to access the keychain without user interaction
+security set-key-partition-list -S apple-tool:,apple: -k ${CREDENTIAL_HELPER_KEYCHAIN_PASSWORD} credential-helper.keychain
+```
+
+### Verification
+
+After setting trust, verify that `aws_signing_helper` can access the certificate without prompts:
+
+```bash
+./aws_signing_helper credential-process \
+    --certificate certs/client-cert.pem \
+    --private-key certs/private-key.pem \
+    --trust-anchor-arn "arn:aws:rolesanywhere:REGION:ACCOUNT_ID:trust-anchor/TRUST_ANCHOR_ID" \
+    --profile-arn "arn:aws:rolesanywhere:REGION:ACCOUNT_ID:profile/PROFILE_ID" \
+    --role-arn "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"
+```
+
+If successful, you should receive credentials without any Keychain access prompts.
+
 ## Automated Credential Export Script
 
 A template zsh script (`aws-credentials-export.zsh`) is included in this repository as an example implementation. You can copy this script to a convenient location (e.g., `~/aws-credentials-export.zsh`) and configure it with your certificate paths and AWS ARNs.
