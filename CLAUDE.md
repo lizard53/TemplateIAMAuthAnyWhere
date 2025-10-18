@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**This is a template/reference repository** that demonstrates how to implement Public Key Infrastructure (PKI) for AWS IAM Roles Anywhere. It enables secure authentication from macOS to AWS accounts using self-signed certificates, eliminating the need for long-term IAM access keys.
+**This is a template/reference repository** that demonstrates how to implement Public Key Infrastructure (PKI) for AWS IAM Roles Anywhere. It enables secure authentication from macOS/Linux systems to AWS accounts using self-signed certificates, eliminating the need for long-term IAM access keys.
+
+**Platform Support:** This guide is designed for **macOS and Linux** systems. Commands and scripts use Unix shell syntax (Bash/Zsh). Windows users should use WSL (Windows Subsystem for Linux) or adapt the commands accordingly.
 
 The project uses OpenSSL for certificate management and allows infrastructure deployment using temporary credentials obtained through IAM Roles Anywhere. Use this as a reference when setting up PKI authentication for your own AWS accounts.
 
@@ -408,20 +410,41 @@ Before starting implementation, ensure you have:
 - AWS CLI (for IAM Roles Anywhere setup)
 - aws_signing_helper (AWS tool for credential process with X.509 certificates)
   - Documentation: https://docs.aws.amazon.com/rolesanywhere/latest/userguide/credential-helper.html
-  - **Download for macOS Apple Silicon (ARM64):**
+
+  **Download for macOS:**
+  - **macOS Apple Silicon (ARM64):**
     ```bash
     curl -o aws_signing_helper https://rolesanywhere.amazonaws.com/releases/1.7.1/Aarch64/MacOS/Sonoma/aws_signing_helper
     chmod +x aws_signing_helper
     ```
-  - **Download for macOS Intel (x86_64):**
+  - **macOS Intel (x86_64):**
     ```bash
     curl -o aws_signing_helper https://rolesanywhere.amazonaws.com/releases/1.7.1/X86_64/MacOS/Ventura/aws_signing_helper
     chmod +x aws_signing_helper
     ```
-- Terraform or AWS CDK (for infrastructure deployment)
+
+  **Download for Linux:**
+  - **Linux ARM64:**
+    ```bash
+    curl -o aws_signing_helper https://rolesanywhere.amazonaws.com/releases/1.7.1/Aarch64/Linux/aws_signing_helper
+    chmod +x aws_signing_helper
+    ```
+  - **Linux x86_64:**
+    ```bash
+    curl -o aws_signing_helper https://rolesanywhere.amazonaws.com/releases/1.7.1/X86_64/Linux/aws_signing_helper
+    chmod +x aws_signing_helper
+    ```
+
+  > **Note:** Check your system architecture with `uname -m` (returns 'arm64' or 'aarch64' for ARM, 'x86_64' for Intel/AMD)
+
+- Terraform or AWS CDK (optional, for infrastructure deployment)
 
 
-## Mac Setup
+## macOS Keychain Setup (Optional)
+
+> **Note:** This section is specific to macOS. Linux users can skip this section and use certificates directly from the filesystem.
+
+For macOS users who want to store certificates in the Keychain:
 
 ```bash
 # Set password for keychain
@@ -445,6 +468,12 @@ security find-certificate -a -c "YOUR_HOSTNAME" credential-helper.keychain
 
 # Example:
 # security find-certificate -a -c "MyMacBook" credential-helper.keychain
+```
+
+**Linux Users:** Simply ensure your certificate and private key files have appropriate permissions:
+```bash
+chmod 600 certs/private-key.pem
+chmod 644 certs/client-cert.pem
 ```
 
 

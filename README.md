@@ -1,12 +1,14 @@
 # AWS IAM Roles Anywhere - PKI Authentication Template
 
-**This is a template repository** that demonstrates how to implement Public Key Infrastructure (PKI) for AWS IAM Roles Anywhere, enabling certificate-based authentication from macOS to AWS accounts without long-term access keys.
+**This is a template repository** that demonstrates how to implement Public Key Infrastructure (PKI) for AWS IAM Roles Anywhere, enabling certificate-based authentication from macOS/Linux to AWS accounts without long-term access keys.
+
+> **Platform:** This template is designed for **macOS and Linux** systems. Windows users will need to adapt the commands and scripts accordingly.
 
 ## Overview
 
 This template shows how to authenticate to AWS using X.509 certificates instead of traditional IAM access keys. By leveraging AWS IAM Roles Anywhere, you can obtain temporary AWS credentials using self-signed certificates, providing enhanced security for workloads running outside of AWS.
 
-Use this repository as a reference and starting point for implementing PKI authentication in your own AWS environment.
+Use this repository as a reference and starting point for implementing PKI authentication in your own AWS environment on macOS or Linux systems.
 
 ## What's Included
 
@@ -26,11 +28,17 @@ Use this repository as a reference and starting point for implementing PKI authe
 
 ## Prerequisites
 
-- macOS (Apple Silicon or Intel)
+**Platform Requirements:**
+- macOS (Apple Silicon or Intel) **or** Linux (x86_64 or ARM64)
+- Bash or Zsh shell environment
+
+**Software Requirements:**
 - OpenSSL (for certificate generation)
 - AWS CLI (for IAM Roles Anywhere setup)
 - [aws_signing_helper](https://docs.aws.amazon.com/rolesanywhere/latest/userguide/credential-helper.html) (download instructions in CLAUDE.md)
 - An AWS account with permissions to create IAM Roles Anywhere resources
+
+> **Note for Windows Users:** This template uses Unix shell commands and scripts. You'll need to use WSL (Windows Subsystem for Linux) or adapt the commands for PowerShell/Windows.
 
 ## Getting Started
 
