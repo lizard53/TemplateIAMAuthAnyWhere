@@ -14,6 +14,7 @@ Use this repository as a reference and starting point for implementing PKI authe
 
 - **Template OpenSSL Configuration** (`certs/openssl.cnf`) - Pre-configured for X.509 v3 certificates required by AWS IAM Roles Anywhere
 - **Credential Export Script** (`aws-credentials-export.zsh`) - Automated script to fetch and export temporary AWS credentials
+- **Federated Console URL Script** (`aws-console-url-role.zsh`) - Automated script to generate federated console URLs for direct browser access
 - **Comprehensive Documentation** (`CLAUDE.md`) - Detailed setup guide with examples, architecture diagrams, and troubleshooting
 - **Example Commands** - All commands use placeholder values that you can replace with your own
 
@@ -21,6 +22,7 @@ Use this repository as a reference and starting point for implementing PKI authe
 
 - Self-signed PKI infrastructure for AWS authentication
 - Automated credential generation and export script
+- Federated console URL generation for direct browser access
 - macOS Keychain integration support
 - X.509 v3 certificate configuration
 - Temporary credential management via IAM Roles Anywhere
@@ -35,6 +37,7 @@ Use this repository as a reference and starting point for implementing PKI authe
 **Software Requirements:**
 - OpenSSL (for certificate generation)
 - AWS CLI (for IAM Roles Anywhere setup)
+- jq (for JSON parsing - required for federated console URL script)
 - [aws_signing_helper](https://docs.aws.amazon.com/rolesanywhere/latest/userguide/credential-helper.html) (download instructions in CLAUDE.md)
 - An AWS account with permissions to create IAM Roles Anywhere resources
 
@@ -61,6 +64,7 @@ All commands in CLAUDE.md use **placeholder values** with concrete examples show
 ├── README.md                     # This file - quick start guide
 ├── CLAUDE.md                     # Detailed implementation guide
 ├── aws-credentials-export.zsh    # Template credential automation script
+├── aws-console-url-role.zsh      # Template federated console URL script
 ├── .gitignore                    # Excludes certificates from version control
 └── certs/                        # Certificate storage (not in git)
     ├── openssl.cnf               # OpenSSL v3 configuration template
@@ -91,18 +95,29 @@ The detailed guide includes:
 - **Certificate Generation**: Complete OpenSSL commands with explanations
 - **AWS Configuration**: How to create Trust Anchors, Profiles, and retrieve ARNs
 - **macOS Keychain Integration**: Optional integration for secure certificate storage
-- **Credential Automation**: How to configure and use the included script
+- **Credential Automation**: How to configure and use the included scripts
+- **Federated Console Access**: How to generate and use federated console URLs for browser access
 - **Troubleshooting**: Common issues and their solutions
 - **Security Best Practices**: Guidelines for secure PKI management
 
 ## How It Works
 
+### Certificate-Based Authentication
 1. Generate a self-signed root CA certificate
 2. Register the root CA as a Trust Anchor in AWS IAM Roles Anywhere
 3. Generate client certificates signed by the root CA
 4. Use `aws_signing_helper` to authenticate with the client certificate
 5. Receive temporary AWS credentials (AccessKeyId, SecretAccessKey, SessionToken)
-6. Use credentials to interact with AWS services
+6. Use credentials to interact with AWS services via CLI/SDK or console
+
+### Federated Console Access
+The `aws-console-url-role.zsh` script extends the authentication flow to provide direct browser access:
+1. Obtains temporary credentials using certificate-based authentication
+2. Exchanges credentials for a sign-in token via AWS federation endpoint
+3. Constructs a federated URL with the sign-in token
+4. Opens the URL in your browser for direct AWS Console access with role permissions
+
+See [CLAUDE.md](CLAUDE.md) for detailed flow diagrams and implementation details.
 
 ## Benefits
 

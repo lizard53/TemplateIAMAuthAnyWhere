@@ -306,6 +306,7 @@ Expected directory structure:
 ├── README.md                     # Project overview and quick start guide
 ├── CLAUDE.md                     # Detailed implementation guide (this file)
 ├── aws-credentials-export.zsh    # Template script for credential automation
+├── aws-console-url-role.zsh      # Template script for federated console URL
 ├── certs/
 │   ├── openssl.cnf               # OpenSSL config for v3 certificate extensions
 │   ├── root-ca-key.pem           # Root CA private key (keep secure!)
@@ -408,6 +409,10 @@ Before starting implementation, ensure you have:
 
 - OpenSSL (for certificate generation and management)
 - AWS CLI (for IAM Roles Anywhere setup)
+- jq (for JSON parsing in automation scripts)
+  - **macOS**: `brew install jq`
+  - **Linux**: `apt-get install jq` or `yum install jq`
+- curl (for HTTP requests, typically pre-installed)
 - aws_signing_helper (AWS tool for credential process with X.509 certificates)
   - Documentation: https://docs.aws.amazon.com/rolesanywhere/latest/userguide/credential-helper.html
 
@@ -674,3 +679,178 @@ When creating your own automation script, configure it with:
 - Role ARN: `arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME`
 
 Replace these placeholder values with your actual AWS resource ARNs from the AWS setup.
+
+## Federated Console URL Generator
+
+A template zsh script (`aws-console-url-role.zsh`) is included to generate federated console URLs for direct browser access to the AWS Console using temporary credentials from IAM Roles Anywhere.
+
+### How It Works
+
+The script performs the following steps:
+
+1. **Obtain Temporary Credentials**: Uses `aws_signing_helper` to fetch temporary AWS credentials via certificate-based authentication
+2. **Request Sign-In Token**: Calls the AWS federation endpoint (`https://signin.aws.amazon.com/federation`) with the temporary credentials to obtain a sign-in token
+3. **Construct Federated URL**: Builds a complete URL with the sign-in token that grants console access
+4. **Open in Browser**: Optionally opens the URL automatically in your default browser
+
+### Prerequisites
+
+The federated console URL script requires:
+- `jq` - JSON processor for parsing responses
+  - **macOS**: `brew install jq`
+  - **Linux**: `apt-get install jq` or `yum install jq`
+- `curl` - HTTP client (typically pre-installed)
+- All the same prerequisites as the credential export script (certificates, `aws_signing_helper`, etc.)
+
+### Example Usage
+
+**Generate and display console URL:**
+```bash
+./aws-console-url-role.zsh
+```
+
+**Make the script executable:**
+```bash
+chmod +x aws-console-url-role.zsh
+```
+
+**Copy to a convenient location:**
+```bash
+cp aws-console-url-role.zsh ~/aws-console-url-role.zsh
+chmod +x ~/aws-console-url-role.zsh
+```
+
+**Run from anywhere:**
+```bash
+~/aws-console-url-role.zsh
+```
+
+### Script Configuration
+
+Configure the script with the same values as the credential export script:
+- Certificate path (e.g., `/path/to/certs/client-cert.pem`)
+- Private key path (e.g., `/path/to/certs/private-key.pem`)
+- Trust Anchor ARN: `arn:aws:rolesanywhere:REGION:ACCOUNT_ID:trust-anchor/TA_ID`
+- Profile ARN: `arn:aws:rolesanywhere:REGION:ACCOUNT_ID:profile/PROFILE_ID`
+- Role ARN: `arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME`
+
+Additional configuration options:
+- `SESSION_DURATION`: Console session duration in seconds (default: 43200 = 12 hours, max: 43200)
+- `ISSUER`: Your organization identifier (default: "MyOrganization")
+
+### Script Features
+
+The federated console URL script:
+- Automatically fetches temporary AWS credentials via IAM Roles Anywhere
+- Constructs a federated sign-in URL for AWS Console access
+- Validates prerequisites (`jq`, `curl`, certificates, `aws_signing_helper`)
+- Displays the generated URL for manual copying or automatic browser opening
+- Supports both macOS and Linux for automatic browser opening
+- Includes error handling with helpful messages
+- Shows credential expiration time
+- URL is valid for the configured session duration (up to 12 hours)
+
+### Federation Flow
+
+```mermaid
+sequenceDiagram
+    participant Script as aws-console-url-role.zsh
+    participant Helper as aws_signing_helper
+    participant RolesAnywhere as IAM Roles Anywhere
+    participant Federation as AWS Federation Endpoint
+    participant Browser as Web Browser
+    participant Console as AWS Console
+
+    Script->>Helper: Request credentials with certificate
+    Helper->>RolesAnywhere: Authenticate with certificate
+    RolesAnywhere-->>Helper: Temporary credentials (AccessKey, SecretKey, SessionToken)
+    Helper-->>Script: Return credentials JSON
+    Script->>Script: Parse credentials with jq
+    Script->>Script: Construct session JSON
+    Script->>Federation: POST getSigninToken with session JSON
+    Federation-->>Script: Return SigninToken
+    Script->>Script: Construct federated URL with SigninToken
+    Script->>Browser: Open federated URL (optional)
+    Browser->>Federation: Navigate to federated URL
+    Federation->>Console: Redirect with temporary session
+    Console-->>Browser: Display AWS Console with role permissions
+```
+
+### Understanding Federated URLs
+
+**What is a Federated URL?**
+
+A federated URL is a special AWS URL that allows you to grant console access to users or services using temporary credentials instead of requiring them to log in with IAM user credentials. This is particularly useful for:
+
+- Granting console access to external systems or services
+- Providing temporary console access without creating IAM users
+- Integrating console access into custom workflows or applications
+- Accessing the console with role-based permissions obtained from IAM Roles Anywhere
+
+**How Does It Work?**
+
+The AWS federation endpoint (`signin.aws.amazon.com/federation`) accepts temporary credentials and exchanges them for a sign-in token. This token is then embedded in a URL that, when accessed, automatically signs you into the AWS Console with the permissions granted by the temporary credentials.
+
+**Security Considerations:**
+
+- Federated URLs contain sensitive sign-in tokens - treat them like passwords
+- URLs are time-limited (configured via `SESSION_DURATION`)
+- Never share federated URLs or log them in unsecured locations
+- The console session inherits the permissions from the IAM role used to generate credentials
+- Console sessions are distinct from programmatic access sessions
+
+### Example Output
+
+```
+INFO: Fetching AWS credentials via IAM Roles Anywhere...
+SUCCESS: AWS credentials obtained successfully
+INFO: Credentials expire at: 2025-10-27T18:30:00Z
+INFO: Requesting sign-in token from AWS federation endpoint...
+SUCCESS: Sign-in token obtained successfully
+SUCCESS: Federated console URL generated successfully
+
+INFO: Console URL (valid for 43200 seconds):
+
+https://signin.aws.amazon.com/federation?Action=login&Issuer=MyOrganization&Destination=https%3A%2F%2Fconsole.aws.amazon.com%2F&SigninToken=VGhpc0lzQW5FeGFtcGxlU2lnbkluVG9rZW4...
+
+INFO: Copy the URL above and paste it into your browser to access the AWS Console
+INFO: Or run: open "https://signin.aws.amazon.com/federation?..." (macOS) or xdg-open "https://signin.aws.amazon.com/federation?..." (Linux)
+
+Open URL in default browser? (y/n)
+```
+
+### Troubleshooting Federated Console Access
+
+**Error:** "jq: command not found"
+**Solution:** Install jq using your package manager:
+```bash
+# macOS
+brew install jq
+
+# Ubuntu/Debian
+sudo apt-get install jq
+
+# RHEL/CentOS/Fedora
+sudo yum install jq
+```
+
+**Error:** "Failed to obtain sign-in token"
+**Solution:**
+1. Verify that your temporary credentials are valid (not expired)
+2. Check that the credentials have the necessary permissions
+3. Ensure you have network access to `https://signin.aws.amazon.com/federation`
+4. Verify the session JSON is properly formatted
+
+**Error:** "The security token included in the request is invalid"
+**Solution:**
+1. Verify your IAM role has the correct trust policy for IAM Roles Anywhere
+2. Check that the Trust Anchor, Profile, and Role ARNs are correct
+3. Ensure the client certificate is valid and not expired
+4. Verify the certificate chain is correct: `openssl verify -CAfile root-ca-cert.pem client-cert.pem`
+
+**URL doesn't open in browser:**
+**Solution:**
+1. Manually copy the URL and paste it into your browser
+2. Ensure you have `open` (macOS) or `xdg-open` (Linux) available
+3. Check browser default settings
+4. Try a different browser if the default one has issues
